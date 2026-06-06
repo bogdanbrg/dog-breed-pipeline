@@ -23,23 +23,24 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Entry point — Cloud Functions calls this function when the HTTP trigger fires
+# Entry point — Cloud Functions calls this when the HTTP trigger fires
 # ---------------------------------------------------------------------------
 @functions_framework.http
 def ingest_breeds(request):
     """
     HTTP-triggered Cloud Function.
     1. Fetches all breed records from the Dog API.
-    2. Writes the raw JSON response to Cloud Storage.
-    3. Loads the data into a BigQuery bronze table.
+    2. Writes the raw JSON response to Cloud Storage (archive copy).
+    3. Writes an enriched copy (with ingested_date) to GCS for BQ loading.
+    4. Loads the enriched file into the BigQuery bronze table.
     Returns a JSON response with a status message.
     """
-    run_date = date.today().isoformat()   # e.g. "2026-06-07"
+    run_date = date.today().isoformat()  # e.g. "2026-06-06"
 
     try:
         breeds = _fetch_breeds()
-        gcs_uri = _write_to_gcs(breeds, run_date)
-        rows_loaded = _load_to_bigquery(gcs_uri, run_date)
+        raw_uri, enriched_uri = _write_to_gcs(breeds, run_date)
+        rows_loaded = _load_to_bigquery(enriched_uri, run_date)
 
         logger.info("Pipeline complete. date=%s rows=%d", run_date, rows_loaded)
         return {"status": "ok", "date": run_date, "rows_loaded": rows_loaded}, 200
@@ -52,17 +53,14 @@ def ingest_breeds(request):
 # ---------------------------------------------------------------------------
 # Step 1: call the Dog API
 # ---------------------------------------------------------------------------
-def _fetch_breeds():
-    """
-    Calls the Dog API and returns a list of breed dicts.
-    Raises an exception if the request fails or returns a non-200 status.
-    """
+def _fetch_breeds() -> list:
+    """Calls the Dog API and returns a list of breed dicts."""
     headers = {}
     if DOG_API_KEY:
         headers["x-api-key"] = DOG_API_KEY
 
     response = requests.get(DOG_API_URL, headers=headers, timeout=30)
-    response.raise_for_status()   # raises HTTPError for 4xx/5xx responses
+    response.raise_for_status()  # raises HTTPError for 4xx/5xx
 
     breeds = response.json()
     logger.info("Fetched %d breeds from Dog API", len(breeds))
@@ -70,109 +68,86 @@ def _fetch_breeds():
 
 
 # ---------------------------------------------------------------------------
-# Step 2: write raw JSON to Cloud Storage
+# Step 2: write to Cloud Storage
 # ---------------------------------------------------------------------------
-def _write_to_gcs(breeds: list, run_date: str) -> str:
+def _write_to_gcs(breeds: list, run_date: str) -> tuple[str, str]:
     """
-    Serialises the breed list to newline-delimited JSON (one record per line)
-    and uploads it to GCS at:
-      gs://<bucket>/breeds/date=<run_date>/breeds.json
+    Uploads two files to GCS under breeds/date=<run_date>/:
 
-    Returns the GCS URI so the BigQuery load job can reference it.
+      breeds.json             — raw API payload, no modifications (archive)
+      breeds_enriched.json    — same payload with ingested_date added (for BQ)
+
+    Both are newline-delimited JSON (NDJSON). BigQuery's load jobs require
+    NDJSON: one JSON object per line rather than a single large array.
+
+    Returns (raw_uri, enriched_uri).
     """
-    # Newline-delimited JSON (NDJSON): BigQuery's preferred format for load jobs.
-    # Each line is one complete JSON object — easier to stream and parse than
-    # a single large JSON array.
-    ndjson_content = "\n".join(json.dumps(record) for record in breeds)
-
-    blob_path = f"breeds/date={run_date}/breeds.json"
-    gcs_uri = f"gs://{GCS_BUCKET_NAME}/{blob_path}"
-
     client = storage.Client()
     bucket = client.bucket(GCS_BUCKET_NAME)
-    blob = bucket.blob(blob_path)
-    blob.upload_from_string(ndjson_content, content_type="application/json")
+    prefix = f"breeds/date={run_date}"
 
-    logger.info("Wrote raw data to %s", gcs_uri)
-    return gcs_uri
+    # Build both NDJSON strings in one pass over the list
+    raw_lines = []
+    enriched_lines = []
+    for record in breeds:
+        raw_lines.append(json.dumps(record))
+        enriched = {**record, "ingested_date": run_date}
+        enriched_lines.append(json.dumps(enriched))
+
+    raw_ndjson = "\n".join(raw_lines)
+    enriched_ndjson = "\n".join(enriched_lines)
+
+    raw_path = f"{prefix}/breeds.json"
+    enriched_path = f"{prefix}/breeds_enriched.json"
+
+    bucket.blob(raw_path).upload_from_string(raw_ndjson, content_type="application/json")
+    bucket.blob(enriched_path).upload_from_string(enriched_ndjson, content_type="application/json")
+
+    raw_uri = f"gs://{GCS_BUCKET_NAME}/{raw_path}"
+    enriched_uri = f"gs://{GCS_BUCKET_NAME}/{enriched_path}"
+
+    logger.info("Wrote raw data to %s", raw_uri)
+    logger.info("Wrote enriched data to %s", enriched_uri)
+    return raw_uri, enriched_uri
 
 
 # ---------------------------------------------------------------------------
-# Step 3: load from GCS into BigQuery
+# Step 3: load enriched file from GCS into BigQuery
 # ---------------------------------------------------------------------------
-def _load_to_bigquery(gcs_uri: str, run_date: str) -> int:
+def _load_to_bigquery(enriched_uri: str, run_date: str) -> int:
     """
-    Runs a BigQuery load job that reads the NDJSON file from GCS and appends
-    rows to the bronze table. Adds an `ingested_date` column so each row is
-    tagged with the date it was loaded.
+    Runs a BigQuery load job that appends rows from the enriched NDJSON file.
 
-    Returns the number of rows loaded.
+    autodetect=True: BQ infers column types from the JSON keys. Fine for a
+    bronze table where we want to capture everything the API sends.
+
+    WRITE_APPEND: we never overwrite history. Each day's run adds new rows
+    tagged with ingested_date, giving us a full reload history.
+
+    ALLOW_FIELD_ADDITION: safe if the Dog API ever adds new fields — BQ
+    will extend the schema rather than reject the load.
+
+    Returns the total row count of the table after loading.
     """
     client = bigquery.Client(project=BQ_PROJECT)
     table_ref = f"{BQ_PROJECT}.{BQ_DATASET}.{BQ_TABLE}"
 
     job_config = bigquery.LoadJobConfig(
         source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
-        autodetect=True,               # BQ infers schema from the JSON keys
+        autodetect=True,
         write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
-                                       # append rows; never overwrite history
         schema_update_options=[
             bigquery.SchemaUpdateOption.ALLOW_FIELD_ADDITION,
-        ],                             # safe if the API adds new fields in future
+        ],
     )
 
-    # BigQuery does not natively add a load-time column, so we add
-    # ingested_date to every record before loading.
-    # We re-read the GCS file, inject the field, and upload a patched version.
-    gcs_uri_with_date = _inject_ingested_date(gcs_uri, run_date)
-
     load_job = client.load_table_from_uri(
-        gcs_uri_with_date,
+        enriched_uri,
         table_ref,
         job_config=job_config,
     )
-    load_job.result()   # blocks until the job completes; raises on failure
+    load_job.result()  # blocks until complete; raises on failure
 
     destination = client.get_table(table_ref)
-    logger.info("Loaded data into %s", table_ref)
+    logger.info("Loaded data into %s (%d total rows)", table_ref, destination.num_rows)
     return destination.num_rows
-
-
-# ---------------------------------------------------------------------------
-# Helper: inject ingested_date into every record
-# ---------------------------------------------------------------------------
-def _inject_ingested_date(gcs_uri: str, run_date: str) -> str:
-    """
-    Downloads the NDJSON file from GCS, adds `ingested_date` to each record,
-    and uploads the patched version to a separate GCS path:
-      breeds/date=<run_date>/breeds_with_date.json
-
-    Returns the URI of the patched file.
-    """
-    client = storage.Client()
-
-    # Parse  gs://bucket/path  into its components
-    path_without_scheme = gcs_uri.replace("gs://", "")
-    bucket_name, blob_path = path_without_scheme.split("/", 1)
-
-    # Download and patch
-    bucket = client.bucket(bucket_name)
-    raw_content = bucket.blob(blob_path).download_as_text()
-
-    patched_lines = []
-    for line in raw_content.splitlines():
-        record = json.loads(line)
-        record["ingested_date"] = run_date
-        patched_lines.append(json.dumps(record))
-
-    patched_content = "\n".join(patched_lines)
-
-    # Upload patched file
-    patched_blob_path = blob_path.replace("breeds.json", "breeds_with_date.json")
-    bucket.blob(patched_blob_path).upload_from_string(
-        patched_content, content_type="application/json"
-    )
-
-    patched_uri = f"gs://{bucket_name}/{patched_blob_path}"
-    logger.info("Uploaded patched file to %s", patched_uri)
-    return patched_uri
