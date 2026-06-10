@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: bronze
+    project: project-6a3a4778-6bf8-49b1-984
+    dataset: bronze
+    tables:
+      - name: dog_api_raw
+        description: "Raw breed data loaded daily from the Dog API by the Cloud Function"
