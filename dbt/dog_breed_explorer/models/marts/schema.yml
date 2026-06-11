@@ -38,3 +38,15 @@ models:
         tests:
           - unique
           - not_null
+
+  - name: mart_temperaments
+    description: "Bridge table with one row per breed per temperament tag, split from the comma-separated temperament string."
+    columns:
+      - name: breed_id
+        description: "Foreign key to dim_breed."
+        tests:
+          - not_null
+      - name: temperament
+        description: "Individual temperament tag e.g. Friendly, Intelligent, Loyal."
+        tests:
+          - not_null
