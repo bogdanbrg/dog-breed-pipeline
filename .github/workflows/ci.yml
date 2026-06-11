@@ -1,0 +1,56 @@
+name: CI — dbt run & test on PR
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write   # required for Workload Identity Federation
+
+jobs:
+  dbt-ci:
+    name: dbt run & test (dev)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP via Workload Identity Federation
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dbt
+        run: pip install dbt-bigquery==1.11.1
+
+      - name: Write profiles.yml
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << EOF
+          dog_breed_explorer:
+            target: dev
+            outputs:
+              dev:
+                type: bigquery
+                method: oauth
+                project: project-6a3a4778-6bf8-49b1-984
+                dataset: dog_breeds_dev
+                threads: 4
+                timeout_seconds: 300
+          EOF
+
+      - name: dbt run
+        working-directory: dbt/dog_breed_explorer
+        run: dbt run
+
+      - name: dbt test
+        working-directory: dbt/dog_breed_explorer
+        run: dbt test

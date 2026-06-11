@@ -1,0 +1,73 @@
+name: CD — deploy on merge to main
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write   # required for Workload Identity Federation
+
+jobs:
+  deploy:
+    name: Deploy Cloud Function + dbt prod
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP via Workload Identity Federation
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy Cloud Function
+        run: |
+          gcloud functions deploy ingest-breeds \
+            --runtime=python313 \
+            --region=us-central1 \
+            --source=ingestion \
+            --entry-point=ingest_breeds \
+            --trigger-http \
+            --no-allow-unauthenticated \
+            --service-account=dog-pipeline-sa@project-6a3a4778-6bf8-49b1-984.iam.gserviceaccount.com \
+            --set-env-vars="GCS_BUCKET_NAME=dog-breed-pipeline-raw,BQ_PROJECT=project-6a3a4778-6bf8-49b1-984,BQ_DATASET=bronze,BQ_TABLE=dog_api_raw,DOG_API_KEY=${{ secrets.DOG_API_KEY }}" \
+            --timeout=120s \
+            --memory=256Mi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dbt
+        run: pip install dbt-bigquery==1.11.1
+
+      - name: Write profiles.yml
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << EOF
+          dog_breed_explorer:
+            target: prod
+            outputs:
+              prod:
+                type: bigquery
+                method: oauth
+                project: project-6a3a4778-6bf8-49b1-984
+                dataset: dog_breeds_curated
+                threads: 4
+                timeout_seconds: 300
+          EOF
+
+      - name: dbt run (prod)
+        working-directory: dbt/dog_breed_explorer
+        run: dbt run --target prod
+
+      - name: dbt test (prod)
+        working-directory: dbt/dog_breed_explorer
+        run: dbt test --target prod
