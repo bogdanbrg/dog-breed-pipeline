@@ -1,5 +1,8 @@
 # Dog Breed Data Pipeline
 
+[![CD — deploy on merge to main](https://github.com/bogdanbrg/dog-breed-pipeline/actions/workflows/cd.yml/badge.svg)](https://github.com/bogdanbrg/dog-breed-pipeline/actions/workflows/cd.yml)
+[![CI — dbt run & test on PR](https://github.com/bogdanbrg/dog-breed-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/bogdanbrg/dog-breed-pipeline/actions/workflows/ci.yml)
+
 A batch data engineering pipeline that ingests breed data from the [Dog API](https://api.thedogapi.com/v1/breeds), stores raw JSON in Cloud Storage, loads it into BigQuery, and transforms it with dbt.
 
 ## Architecture
