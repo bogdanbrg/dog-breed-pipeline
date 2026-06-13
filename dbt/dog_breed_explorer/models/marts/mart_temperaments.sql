@@ -13,7 +13,7 @@ split as (
         breed_name,
         breed_group,
         size_class,
-        trim(temperament_tag)   as temperament
+        trim(lower(temperament_tag))   as temperament
     from base,
     unnest(split(temperament, ',')) as temperament_tag
 

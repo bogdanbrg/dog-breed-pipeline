@@ -13,8 +13,24 @@ models:
         description: "Official breed name."
         tests:
           - not_null
+      - name: breed_group
+        description: "AKC breed group e.g. Herding, Hound, Sporting, Terrier, Toy, Working."
+      - name: origin
+        description: "Country or region where the breed was developed."
+      - name: country_code
+        description: "ISO 3166-1 alpha-2 country code for the breed's country of origin."
+      - name: temperament
+        description: "Comma-separated list of temperament traits as provided by the Dog API."
+      - name: description
+        description: "Short narrative description of the breed's appearance and personality."
+      - name: bred_for
+        description: "Historical purpose the breed was developed for. Null for most breeds in this dataset."
+      - name: perfect_for
+        description: "Intended owner profile or lifestyle match. Null for all breeds in this dataset."
+      - name: reference_image_id
+        description: "ID of the breed's reference image in the Dog API image service."
       - name: size_class
-        description: "Size classification derived from maximum weight."
+        description: "Size classification derived from weight_kg_max: Toy (≤5 kg), Small (≤10 kg), Medium (≤25 kg), Large (≤45 kg), Giant (>45 kg), Unknown (no weight data)."
         tests:
           - accepted_values:
               values: ['Toy', 'Small', 'Medium', 'Large', 'Giant', 'Unknown']
@@ -29,15 +45,69 @@ models:
           - relationships:
               to: ref('dim_breed')
               field: breed_id
+      - name: life_span_min
+        description: "Minimum life span in years, extracted from the API range string."
+      - name: life_span_max
+        description: "Maximum life span in years, extracted from the API range string."
+      - name: life_span_avg
+        description: "Average of life_span_min and life_span_max, used as a single life span estimate."
+      - name: weight_kg_min
+        description: "Minimum weight in kilograms. For breeds with sex-specific ranges, the lowest value across all sexes."
+      - name: weight_kg_max
+        description: "Maximum weight in kilograms. For breeds with sex-specific ranges, the highest value across all sexes."
+      - name: weight_kg_avg
+        description: "Average of weight_kg_min and weight_kg_max."
+      - name: height_cm_min
+        description: "Minimum height in centimetres. For breeds with sex-specific ranges, the lowest value across all sexes."
+      - name: height_cm_max
+        description: "Maximum height in centimetres. For breeds with sex-specific ranges, the highest value across all sexes."
+      - name: height_cm_avg
+        description: "Average of height_cm_min and height_cm_max."
 
   - name: mart_breeds
-    description: "Denormalised dashboard-ready table joining dim_breed and fact_weight_life_span."
+    description: "Denormalised dashboard-ready table joining dim_breed and fact_weight_life_span. One row per breed."
     columns:
       - name: breed_id
         description: "Unique identifier for the breed."
         tests:
           - unique
           - not_null
+      - name: breed_name
+        description: "Official breed name."
+      - name: breed_group
+        description: "AKC breed group e.g. Herding, Hound, Sporting, Terrier, Toy, Working."
+      - name: origin
+        description: "Country or region where the breed was developed."
+      - name: country_code
+        description: "ISO 3166-1 alpha-2 country code for the breed's country of origin."
+      - name: temperament
+        description: "Comma-separated list of temperament traits as provided by the Dog API."
+      - name: description
+        description: "Short narrative description of the breed's appearance and personality."
+      - name: bred_for
+        description: "Historical purpose the breed was developed for. Null for most breeds in this dataset."
+      - name: perfect_for
+        description: "Intended owner profile or lifestyle match. Null for all breeds in this dataset."
+      - name: size_class
+        description: "Size classification derived from weight_kg_max: Toy, Small, Medium, Large, Giant, or Unknown."
+      - name: life_span_min
+        description: "Minimum life span in years."
+      - name: life_span_max
+        description: "Maximum life span in years."
+      - name: life_span_avg
+        description: "Average of life_span_min and life_span_max."
+      - name: weight_kg_min
+        description: "Minimum weight in kilograms."
+      - name: weight_kg_max
+        description: "Maximum weight in kilograms."
+      - name: weight_kg_avg
+        description: "Average of weight_kg_min and weight_kg_max."
+      - name: height_cm_min
+        description: "Minimum height in centimetres."
+      - name: height_cm_max
+        description: "Maximum height in centimetres."
+      - name: height_cm_avg
+        description: "Average of height_cm_min and height_cm_max."
 
   - name: mart_temperaments
     description: "Bridge table with one row per breed per temperament tag, split from the comma-separated temperament string."
@@ -46,7 +116,13 @@ models:
         description: "Foreign key to dim_breed."
         tests:
           - not_null
+      - name: breed_name
+        description: "Official breed name — denormalised for convenience."
+      - name: breed_group
+        description: "AKC breed group — denormalised for filtering in dashboards."
+      - name: size_class
+        description: "Size classification — denormalised for filtering in dashboards."
       - name: temperament
-        description: "Individual temperament tag e.g. Friendly, Intelligent, Loyal."
+        description: "Individual temperament tag, lowercased and trimmed. e.g. friendly, intelligent, loyal."
         tests:
           - not_null

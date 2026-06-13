@@ -25,5 +25,29 @@ models:
         description: "Minimum height in centimetres."
       - name: height_cm_max
         description: "Maximum height in centimetres."
+      - name: species_id
+        description: "Identifier for the species group from the Dog API (e.g. 2 = domestic dog)."
+      - name: breed_group
+        description: "AKC breed group e.g. Herding, Hound, Sporting, Terrier, Toy, Working."
+      - name: origin
+        description: "Country or region where the breed was developed."
+      - name: country_code
+        description: "ISO 3166-1 alpha-2 country code for the breed's country of origin."
+      - name: temperament
+        description: "Comma-separated list of temperament traits as provided by the Dog API."
+      - name: description
+        description: "Short narrative description of the breed's appearance and personality."
+      - name: bred_for
+        description: "Historical purpose the breed was developed for. Null for most breeds in this dataset."
+      - name: perfect_for
+        description: "Intended owner profile or lifestyle match. Null for all breeds in this dataset."
+      - name: reference_image_id
+        description: "ID of the breed's reference image in the Dog API image service."
+      - name: life_span_avg
+        description: "Average of life_span_min and life_span_max."
+      - name: weight_kg_avg
+        description: "Average of weight_kg_min and weight_kg_max."
+      - name: height_cm_avg
+        description: "Average of height_cm_min and height_cm_max."
       - name: ingested_date
         description: "Date the record was loaded into BigQuery by the pipeline."
