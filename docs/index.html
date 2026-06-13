@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dog Breed Explorer — Data Engineering Case Study</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: #F6F4F0;
+      color: #1A1A1A;
+    }
+
+    /* NAV */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: #2D4A3E;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      padding: 0 40px;
+      height: 56px;
+      gap: 32px;
+    }
+    nav .brand {
+      color: #fff;
+      font-weight: 700;
+      font-size: 1rem;
+      margin-right: auto;
+      letter-spacing: 0.02em;
+    }
+    nav a {
+      color: rgba(255,255,255,0.75);
+      text-decoration: none;
+      font-size: 0.85rem;
+      transition: color 0.2s;
+    }
+    nav a:hover { color: #fff; }
+
+    /* SECTIONS */
+    section {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 100px 10% 80px;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+    }
+
+    section.dark {
+      background: #2D4A3E;
+      color: #F6F4F0;
+    }
+
+    .step-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #2D4A3E;
+      margin-bottom: 12px;
+    }
+    section.dark .step-label { color: rgba(255,255,255,0.5); }
+
+    h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 700;
+      line-height: 1.1;
+      margin-bottom: 24px;
+    }
+    h2 {
+      font-size: clamp(1.5rem, 3vw, 2.25rem);
+      font-weight: 700;
+      margin-bottom: 20px;
+      line-height: 1.2;
+    }
+    p {
+      font-size: 1.05rem;
+      line-height: 1.75;
+      max-width: 720px;
+      margin-bottom: 16px;
+      opacity: 0.85;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: start;
+      margin-top: 16px;
+    }
+
+    /* CARDS */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      margin-top: 32px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 24px;
+      border: 1px solid rgba(0,0,0,0.07);
+    }
+    .card h3 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #2D4A3E;
+    }
+    .card p {
+      font-size: 0.88rem;
+      margin: 0;
+      opacity: 0.75;
+    }
+
+    /* CODE BLOCK */
+    pre {
+      background: #1A1A1A;
+      color: #A8D4C8;
+      padding: 24px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      line-height: 1.7;
+      overflow-x: auto;
+      margin-top: 20px;
+    }
+    code { font-family: 'Courier New', monospace; }
+
+    /* FINDING BLOCKS */
+    .finding {
+      background: #fff;
+      border-left: 4px solid #2D4A3E;
+      padding: 16px 20px;
+      border-radius: 0 8px 8px 0;
+      margin-bottom: 16px;
+    }
+    .finding h4 {
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: #2D4A3E;
+    }
+    .finding p { font-size: 0.88rem; margin: 0; }
+
+    /* PIPELINE DIAGRAM */
+    .pipeline {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-top: 32px;
+      flex-wrap: wrap;
+    }
+    .pipe-step {
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 8px;
+      padding: 16px 20px;
+      text-align: center;
+      min-width: 130px;
+    }
+    .pipe-step .icon { font-size: 1.5rem; margin-bottom: 6px; }
+    .pipe-step .label { font-size: 0.78rem; font-weight: 700; color: #2D4A3E; }
+    .pipe-step .sub { font-size: 0.72rem; opacity: 0.6; margin-top: 2px; }
+    .pipe-arrow {
+      font-size: 1.2rem;
+      color: #2D4A3E;
+      padding: 0 8px;
+      opacity: 0.6;
+    }
+
+    /* STACK TABLE */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 24px;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      font-size: 0.9rem;
+    }
+    th {
+      background: #2D4A3E;
+      color: #fff;
+      padding: 12px 16px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(45,74,62,0.04); }
+
+    /* CTA BUTTON */
+    .btn {
+      display: inline-block;
+      margin-top: 32px;
+      padding: 14px 32px;
+      background: #2D4A3E;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: #3D6B59; }
+    .btn.outline {
+      background: transparent;
+      border: 2px solid #fff;
+      color: #fff;
+      margin-left: 16px;
+    }
+    .btn.outline:hover { background: rgba(255,255,255,0.1); }
+
+    /* MEDALLION */
+    .medallion {
+      display: flex;
+      gap: 20px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+    .medal {
+      flex: 1;
+      min-width: 180px;
+      border-radius: 8px;
+      padding: 24px;
+      color: #fff;
+    }
+    .medal.bronze { background: #8B6914; }
+    .medal.silver { background: #2D4A3E; }
+    .medal h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.7; margin-bottom: 8px; }
+    .medal h2 { font-size: 1.1rem; margin-bottom: 10px; color: #fff; }
+    .medal p { font-size: 0.82rem; opacity: 0.85; margin: 0; color: #fff; }
+
+    /* FOOTER */
+    footer {
+      background: #1A1A1A;
+      color: rgba(255,255,255,0.5);
+      text-align: center;
+      padding: 32px;
+      font-size: 0.82rem;
+    }
+    footer a { color: rgba(255,255,255,0.7); }
+
+    @media (max-width: 700px) {
+      .two-col { grid-template-columns: 1fr; }
+      .pipeline { flex-direction: column; }
+      .pipe-arrow { transform: rotate(90deg); }
+      nav a { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <span class="brand">Dog Breed Explorer</span>
+  <a href="#overview">Overview</a>
+  <a href="#ingestion">Ingestion</a>
+  <a href="#exploration">Exploration</a>
+  <a href="#transformation">Transformation</a>
+  <a href="#testing">Testing</a>
+  <a href="#cicd">CI/CD</a>
+  <a href="#dashboard">Dashboard</a>
+</nav>
+
+<!-- HERO -->
+<section class="dark" id="overview">
+  <div class="step-label">Data Engineering Case Study</div>
+  <h1>Dog Breed Explorer</h1>
+  <p>An end-to-end batch data pipeline built on Google Cloud Platform — from raw API ingestion through BigQuery, dbt transformations, automated CI/CD, to a live Looker Studio dashboard.</p>
+  <div>
+    <a class="btn" href="https://datastudio.google.com/s/kwo-ewne7PM" target="_blank">View Dashboard</a>
+    <a class="btn outline" href="https://github.com/bogdanbrg/dog-breed-pipeline" target="_blank">View on GitHub</a>
+  </div>
+
+  <div class="pipeline" style="margin-top: 56px;">
+    <div class="pipe-step">
+      <div class="icon">🐕</div>
+      <div class="label">Dog API</div>
+      <div class="sub">Source</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">
+      <div class="icon">⚡</div>
+      <div class="label">Cloud Function</div>
+      <div class="sub">Python 3.12</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">
+      <div class="icon">🪣</div>
+      <div class="label">Cloud Storage</div>
+      <div class="sub">Raw JSON</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">
+      <div class="icon">🏗️</div>
+      <div class="label">BigQuery Bronze</div>
+      <div class="sub">Raw load</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">
+      <div class="icon">🔧</div>
+      <div class="label">dbt Core</div>
+      <div class="sub">Transform</div>
+    </div>
+    <div class="pipe-arrow">→</div>
+    <div class="pipe-step">
+      <div class="icon">📊</div>
+      <div class="label">Looker Studio</div>
+      <div class="sub">Dashboard</div>
+    </div>
+  </div>
+</section>
+
+<!-- STACK -->
+<section id="stack">
+  <div class="step-label">Technology</div>
+  <h2>Stack</h2>
+  <p>Every layer was chosen to reflect modern data engineering practice on GCP.</p>
+  <table>
+    <thead>
+      <tr><th>Layer</th><th>Technology</th><th>Why</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Ingestion</td><td>Cloud Functions (Python 3.12)</td><td>Serverless, no infrastructure to manage, triggered on schedule</td></tr>
+      <tr><td>Raw storage</td><td>Cloud Storage (NDJSON, date-partitioned)</td><td>Cheap, durable, preserves raw data for reprocessing</td></tr>
+      <tr><td>Warehouse</td><td>BigQuery</td><td>Serverless, scales to any volume, native dbt support</td></tr>
+      <tr><td>Transformation</td><td>dbt Core + BigQuery adapter</td><td>SQL-first, version-controlled, built-in testing and documentation</td></tr>
+      <tr><td>Orchestration</td><td>Cloud Scheduler</td><td>Simple cron trigger for daily 02:00 UTC runs</td></tr>
+      <tr><td>CI/CD</td><td>GitHub Actions + Workload Identity Federation</td><td>Keyless GCP auth, automated deploy on merge to main</td></tr>
+      <tr><td>Visualisation</td><td>Looker Studio</td><td>Native BigQuery connector, shareable, no cost</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- INGESTION -->
+<section id="ingestion">
+  <div class="step-label">Step 1</div>
+  <h2>Ingestion</h2>
+  <div class="two-col">
+    <div>
+      <p>A Cloud Function fetches all 628 dog breeds from the Dog API on a daily schedule (02:00 UTC via Cloud Scheduler). Each run writes a raw NDJSON file to Cloud Storage partitioned by date, then loads the same data into BigQuery's bronze layer.</p>
+      <p><strong>Key design decision:</strong> <code>ingested_date</code> is injected in-memory during the BigQuery load step using a <code>BytesIO</code> buffer — no second file is written to GCS. This keeps Cloud Storage as a clean archive of the unmodified API response.</p>
+      <p><strong>Write disposition:</strong> <code>WRITE_APPEND</code> — each daily run adds rows. Deduplication happens downstream in dbt using <code>QUALIFY ROW_NUMBER()</code>.</p>
+    </div>
+    <div>
+<pre><code>def _load_to_bigquery(breeds, run_date):
+    ndjson = "\n".join(
+        json.dumps({**r, "ingested_date": run_date})
+        for r in breeds
+    )
+    job_config = bigquery.LoadJobConfig(
+        source_format=NEWLINE_DELIMITED_JSON,
+        autodetect=True,
+        write_disposition=WRITE_APPEND,
+    )
+    client.load_table_from_file(
+        io.BytesIO(ndjson.encode("utf-8")),
+        table_ref,
+        job_config=job_config
+    ).result()</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- DATA EXPLORATION -->
+<section id="exploration">
+  <div class="step-label">Step 2</div>
+  <h2>Data Exploration &amp; Quality</h2>
+  <p>Before building any transformations, the raw data was explored directly — both in BigQuery and by inspecting raw GCS files — to understand the data structure and identify quality issues.</p>
+
+  <div style="margin-top: 24px;">
+    <div class="finding">
+      <h4>Null fields at source</h4>
+      <p><code>perfect_for</code> and <code>bred_for</code> are null for all 628 breeds. Confirmed by reading raw GCS files directly — this is an API-level gap, not a pipeline bug.</p>
+    </div>
+    <div class="finding">
+      <h4>Mixed height &amp; weight formats</h4>
+      <p>The API returns both <code>"38-46"</code> and <code>"Male: 45-53; Female: 43-53"</code> in the same column. Handled using <code>REGEXP_EXTRACT_ALL</code> to extract all numbers and take MIN/MAX.</p>
+    </div>
+    <div class="finding">
+      <h4>Temperament case inconsistency</h4>
+      <p><code>"loyal"</code> and <code>"Loyal"</code> appeared as separate values, splitting the count. Fixed by applying <code>LOWER()</code> before splitting in <code>mart_temperaments</code>.</p>
+    </div>
+    <div class="finding">
+      <h4>Temperament inflation bias</h4>
+      <p><code>"intelligent"</code> appears in ~86% of breeds — low signal for distinguishing breeds. Noted as a data quality observation rather than a filtering dimension.</p>
+    </div>
+    <div class="finding">
+      <h4>Misleading breed names</h4>
+      <p>Denmark Feist has <code>country_code = US</code> — "Denmark" refers to a town in Tennessee, not the country. A good example of why raw fields need validation before use in dashboards.</p>
+    </div>
+  </div>
+</section>
+
+<!-- TRANSFORMATION -->
+<section id="transformation">
+  <div class="step-label">Step 3</div>
+  <h2>Transformation with dbt</h2>
+  <p>Transformations follow a <strong>medallion architecture</strong> — raw bronze data flows through a staging layer into curated mart tables ready for dashboards.</p>
+
+  <div class="medallion">
+    <div class="medal bronze">
+      <h3>Bronze</h3>
+      <h2>dog_breeds_bronze</h2>
+      <p>Raw JSON loaded directly from the Dog API. Append-only. Preserves full history.</p>
+    </div>
+    <div class="medal silver">
+      <h3>Curated</h3>
+      <h2>dog_breeds_curated</h2>
+      <p>dbt-transformed tables. Deduplicated, typed, enriched with derived fields.</p>
+    </div>
+  </div>
+
+  <div class="cards" style="margin-top: 32px;">
+    <div class="card">
+      <h3>stg_breeds</h3>
+      <p>Deduplicates raw data (one row per breed), casts types, parses mixed-format range strings into min/max numeric columns. Materialised as a <strong>view</strong>.</p>
+    </div>
+    <div class="card">
+      <h3>dim_breed</h3>
+      <p>Descriptive attributes per breed. Derives <code>size_class</code> (Toy / Small / Medium / Large / Giant) from <code>weight_kg_max</code>. Materialised as a <strong>table</strong>.</p>
+    </div>
+    <div class="card">
+      <h3>fact_weight_life_span</h3>
+      <p>Numeric measurements per breed — weight, height, life span (min, max, avg). Pure fact table with no descriptive columns. Materialised as a <strong>table</strong>.</p>
+    </div>
+    <div class="card">
+      <h3>mart_breeds</h3>
+      <p>Denormalised join of dim + fact. Dashboard-ready, one row per breed, all columns in one place. Materialised as a <strong>table</strong>.</p>
+    </div>
+    <div class="card">
+      <h3>mart_temperaments</h3>
+      <p>Bridge table — splits the comma-separated temperament string into one row per breed per tag. Powers the temperament frequency chart. Materialised as a <strong>table</strong>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- TESTING -->
+<section id="testing">
+  <div class="step-label">Step 4</div>
+  <h2>Testing &amp; Documentation</h2>
+  <div class="two-col">
+    <div>
+      <p>dbt tests ensure data quality is enforced on every run — both in development (CI on pull requests) and production (CD on merge to main).</p>
+      <p><strong>Generic tests:</strong> <code>unique</code>, <code>not_null</code>, <code>accepted_values</code>, and <code>relationships</code> (referential integrity between fact and dim).</p>
+      <p><strong>Custom test:</strong> <code>assert_life_span_min_lte_max</code> — returns any row where <code>life_span_min &gt; life_span_max</code>, catching data anomalies from the API range parser.</p>
+      <p><strong>Documentation:</strong> All models and columns have descriptions in <code>schema.yml</code>, persisted to BigQuery via <code>persist_docs</code>.</p>
+    </div>
+    <div>
+<pre><code>-- tests/assert_life_span_min_lte_max.sql
+-- Returns rows where min > max (should be 0)
+select
+    breed_id,
+    life_span_min,
+    life_span_max
+from {{ ref('stg_breeds') }}
+where life_span_min > life_span_max</code></pre>
+      <div style="margin-top:16px; background:#fff; border-radius:8px; padding:20px; border:1px solid rgba(0,0,0,0.07);">
+        <div style="font-size:0.8rem; font-weight:700; color:#2D4A3E; margin-bottom:12px;">TEST RESULTS</div>
+        <div style="font-size:0.88rem; line-height:2;">
+          ✅ unique — breed_id (stg_breeds, dim_breed, mart_breeds)<br>
+          ✅ not_null — breed_id, breed_name across all models<br>
+          ✅ accepted_values — size_class (6 values)<br>
+          ✅ relationships — fact → dim referential integrity<br>
+          ✅ assert_life_span_min_lte_max — 0 violations<br>
+          <strong style="color:#2D4A3E;">14 tests passing</strong>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CI/CD -->
+<section id="cicd" class="dark">
+  <div class="step-label">Step 5</div>
+  <h2>CI/CD with GitHub Actions</h2>
+  <p>Two workflows automate quality checks and deployment. Authentication to GCP uses <strong>Workload Identity Federation</strong> — no service account keys stored in GitHub secrets.</p>
+
+  <div class="two-col" style="margin-top:32px;">
+    <div style="background:rgba(255,255,255,0.08); border-radius:8px; padding:28px;">
+      <div style="font-size:0.75rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; opacity:0.6; margin-bottom:12px;">CI — Pull Request</div>
+      <h3 style="color:#fff; font-size:1.1rem; margin-bottom:12px;">ci.yml</h3>
+      <p style="color:rgba(255,255,255,0.75); font-size:0.88rem;">Triggers on every PR to main. Runs <code>dbt run</code> and <code>dbt test</code> against the <strong>dev</strong> dataset. Blocks merge if any test fails.</p>
+    </div>
+    <div style="background:rgba(255,255,255,0.08); border-radius:8px; padding:28px;">
+      <div style="font-size:0.75rem; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; opacity:0.6; margin-bottom:12px;">CD — Merge to Main</div>
+      <h3 style="color:#fff; font-size:1.1rem; margin-bottom:12px;">cd.yml</h3>
+      <p style="color:rgba(255,255,255,0.75); font-size:0.88rem;">Triggers on push to main. Deploys the Cloud Function, then runs <code>dbt run</code> and <code>dbt test</code> against <strong>prod</strong>. Full deploy in under 3 minutes.</p>
+    </div>
+  </div>
+</section>
+
+<!-- DASHBOARD -->
+<section id="dashboard">
+  <div class="step-label">Step 6</div>
+  <h2>Dashboard</h2>
+  <p>A Looker Studio dashboard answers the three case study questions using live BigQuery data. Filters by breed group and size class apply across all charts simultaneously.</p>
+
+  <div class="cards">
+    <div class="card">
+      <h3>Top 10 by Longest Life Span</h3>
+      <p>Horizontal bar chart ranked by <code>life_span_max</code>. Treeing Feist, Silken Windhound and Denmark Feist lead at 18 years.</p>
+    </div>
+    <div class="card">
+      <h3>Breed Distribution by Size Class</h3>
+      <p>Pie chart showing that Large (38%) and Medium (33%) breeds dominate the dataset. Size class derived from <code>weight_kg_max</code> in dbt.</p>
+    </div>
+    <div class="card">
+      <h3>Top 15 Temperaments</h3>
+      <p>Bar chart from <code>mart_temperaments</code>. Intelligent and Loyal lead. Note: <code>perfect_for</code> was null for all breeds at source — temperament frequency used as a proxy for family-friendliness.</p>
+    </div>
+    <div class="card">
+      <h3>Breeds by Country of Origin</h3>
+      <p>Geo chart mapped by <code>country_code</code>. Shows geographic distribution of breed origins — UK and US are the dominant sources.</p>
+    </div>
+  </div>
+
+  <a class="btn" href="https://datastudio.google.com/s/kwo-ewne7PM" target="_blank" style="margin-top:40px;">Open Live Dashboard →</a>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>Built by Bogdan Birgovan · <a href="https://github.com/bogdanbrg/dog-breed-pipeline">github.com/bogdanbrg/dog-breed-pipeline</a></p>
+</footer>
+
+</body>
+</html>
