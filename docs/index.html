@@ -279,7 +279,7 @@
   <h1>Dog Breed Explorer</h1>
   <p>An end-to-end batch data pipeline built on Google Cloud Platform — from raw API ingestion through BigQuery, dbt transformations, automated CI/CD, to a live Looker Studio dashboard.</p>
   <div>
-    <a class="btn" href="https://datastudio.google.com/s/kwo-ewne7PM" target="_blank">View Dashboard</a>
+    <a class="btn" href="https://datastudio.google.com/s/lJxxT3rvGAQ" target="_blank">View Dashboard</a>
     <a class="btn outline" href="https://github.com/bogdanbrg/dog-breed-pipeline" target="_blank">View on GitHub</a>
   </div>
 
@@ -501,6 +501,40 @@ where life_span_min > life_span_max</code></pre>
   </div>
 </section>
 
+<!-- ORCHESTRATION -->
+<section id="orchestration">
+  <div class="step-label">Step 5b</div>
+  <h2>Orchestration &amp; Scheduling</h2>
+  <div class="two-col">
+    <div>
+      <p>The ingestion function runs daily at <strong>02:00 UTC</strong> via Cloud Scheduler. dbt currently runs on every deploy via the CD workflow — which is sufficient for this dataset since breed data changes rarely.</p>
+      <p>In a production pipeline where source data changes daily, dbt should also run on a schedule — one hour after ingestion completes — to keep curated tables fresh.</p>
+      <p>This can be added to the existing GitHub Actions workflow with a simple <code>schedule</code> trigger. For more complex pipelines with task dependencies, a dedicated orchestrator like <strong>Cloud Composer (Airflow)</strong> or <strong>Prefect</strong> would be used instead.</p>
+    </div>
+    <div>
+<pre><code># Add to cd.yml to schedule dbt daily
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Ingest runs at 02:00 UTC via Cloud Scheduler
+    # dbt runs at 03:00 UTC — after ingestion completes
+    - cron: '0 3 * * *'</code></pre>
+      <div style="margin-top:16px; background:#fff; border-radius:8px; padding:20px; border:1px solid rgba(0,0,0,0.07);">
+        <div style="font-size:0.8rem; font-weight:700; color:#2D4A3E; margin-bottom:12px;">CRON SYNTAX</div>
+        <div style="font-size:0.82rem; line-height:2; font-family: monospace;">
+          ┌─ minute (0-59)<br>
+          │ ┌─ hour (0-23)<br>
+          │ │ ┌─ day of month (1-31)<br>
+          │ │ │ ┌─ month (1-12)<br>
+          │ │ │ │ ┌─ day of week (0-6)<br>
+          0 3 * * *  → every day at 03:00 UTC
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- DASHBOARD -->
 <section id="dashboard">
   <div class="step-label">Step 6</div>
@@ -526,7 +560,7 @@ where life_span_min > life_span_max</code></pre>
     </div>
   </div>
 
-  <a class="btn" href="https://datastudio.google.com/s/kwo-ewne7PM" target="_blank" style="margin-top:40px;">Open Live Dashboard →</a>
+  <a class="btn" href="https://datastudio.google.com/s/lJxxT3rvGAQ" target="_blank" style="margin-top:40px;">Open Live Dashboard →</a>
 </section>
 
 <!-- FOOTER -->
