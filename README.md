@@ -5,6 +5,45 @@
 
 A batch data engineering pipeline that ingests breed data from the [Dog API](https://api.thedogapi.com/v1/breeds), stores raw JSON in Cloud Storage, loads it into BigQuery, and transforms it with dbt.
 
+## Case Study Overview
+
+This project was built as a complete end-to-end data engineering case study, covering ingestion, storage, transformation, testing, CI/CD, and visualisation.
+
+### Dashboard
+
+[View the live dashboard →](https://datastudio.google.com/s/kwo-ewne7PM)
+
+### Questions answered by the dashboard
+
+1. **Which breeds have the longest predicted life span?** — Top 10 breeds ranked by maximum life span, extracted from the API's mixed-format range strings (e.g. `"12-15 years"`).
+2. **What is the distribution of breeds by weight class?** — Breeds classified into Toy / Small / Medium / Large / Giant based on maximum weight in kg.
+3. **What are the most common temperaments?** — Top 15 temperament tags ranked by frequency across all breeds, derived by splitting the comma-separated `temperament` field into individual rows.
+
+### Data exploration findings
+
+During exploration, several data quality issues were identified directly from the raw source:
+
+- **`perfect_for` and `bred_for` are null for all 628 breeds** — confirmed by inspecting raw GCS files. These fields are absent at the API level, not lost during ingestion.
+- **Mixed height/weight formats** — the API returns both simple ranges (`"38-46"`) and sex-specific ranges (`"Male: 45-53; Female: 43-53"`) in the same column. Handled in `stg_breeds` using `REGEXP_EXTRACT_ALL` to extract all numbers and take `MIN`/`MAX`.
+- **Case inconsistency in temperament** — `"loyal"` and `"Loyal"` appeared as separate values. Fixed in `mart_temperaments` by applying `LOWER()` before splitting.
+- **Temperament inflation bias** — `"intelligent"` appears in ~86% of breeds, suggesting low signal in this field for distinguishing breeds.
+
+### Data model
+
+The pipeline follows a **medallion architecture**:
+
+| Layer | Dataset | Description |
+|---|---|---|
+| Bronze | `dog_breeds_bronze` | Raw JSON loaded directly from the Dog API, append-only |
+| Curated | `dog_breeds_curated` | dbt-transformed tables, deduplicated and typed |
+
+The curated layer uses **dimensional modelling**:
+
+- `dim_breed` — one row per breed, descriptive attributes + size classification
+- `fact_weight_life_span` — numeric measurements (weight, height, life span) per breed
+- `mart_breeds` — denormalised join of dim + fact, dashboard-ready
+- `mart_temperaments` — bridge table, one row per breed per temperament tag
+
 ## Architecture
 
 ```
@@ -25,6 +64,7 @@ Dog API
 | Warehouse | Google BigQuery |
 | Transformation | dbt Core with BigQuery adapter |
 | CI/CD | GitHub Actions |
+| Visualisation | Looker Studio (Data Studio) |
 
 ## GCP Setup
 
