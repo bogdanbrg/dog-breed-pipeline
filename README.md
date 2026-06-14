@@ -9,6 +9,10 @@ A batch data engineering pipeline that ingests breed data from the [Dog API](htt
 
 This project was built as a complete end-to-end data engineering case study, covering ingestion, storage, transformation, testing, CI/CD, and visualisation.
 
+### Project website
+
+[View the project walkthrough →](https://bogdanbrg.github.io/dog-breed-pipeline)
+
 ### Dashboard
 
 [View the live dashboard →](https://datastudio.google.com/s/lJxxT3rvGAQ)
@@ -43,6 +47,16 @@ The curated layer uses **dimensional modelling**:
 - `fact_weight_life_span` — numeric measurements (weight, height, life span) per breed
 - `mart_breeds` — denormalised join of dim + fact, dashboard-ready
 - `mart_temperaments` — bridge table, one row per breed per temperament tag
+
+### Data quality & observability
+
+17 dbt tests covering unique/not_null/accepted_values/relationships plus 3 custom tests:
+
+- `assert_row_count_in_range` — stg_breeds must have 600-700 rows
+- `assert_life_span_max_realistic` — life_span_max must be between 1-30 years
+- `assert_breed_group_null_rate` — breed_group null rate must be below 50%
+
+Cloud Monitoring log-based alert fires on any ERROR from the Cloud Function, sending an email notification immediately.
 
 ## Architecture
 
