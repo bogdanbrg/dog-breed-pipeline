@@ -31,7 +31,8 @@ final as (
         fact.weight_kg_avg,
         fact.height_cm_min,
         fact.height_cm_max,
-        fact.height_cm_avg
+        fact.height_cm_avg,
+        fact.ingested_date
 
     from dim
     inner join fact using (breed_id)

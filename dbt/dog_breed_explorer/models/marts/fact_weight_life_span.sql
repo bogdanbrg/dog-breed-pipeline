@@ -16,7 +16,8 @@ final as (
         round((weight_kg_min + weight_kg_max) / 2, 1)  as weight_kg_avg,
         height_cm_min,
         height_cm_max,
-        round((height_cm_min + height_cm_max) / 2, 1)  as height_cm_avg
+        round((height_cm_min + height_cm_max) / 2, 1)  as height_cm_avg,
+        ingested_date
 
     from stg
 
