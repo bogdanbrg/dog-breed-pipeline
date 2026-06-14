@@ -15,7 +15,7 @@ This project was built as a complete end-to-end data engineering case study, cov
 
 ### Dashboard
 
-[View the live dashboard →](https://datastudio.google.com/s/lJxxT3rvGAQ)
+[View the live dashboard →](https://datastudio.google.com/s/n3H5rTjsJg8)
 
 ### Questions answered by the dashboard
 
