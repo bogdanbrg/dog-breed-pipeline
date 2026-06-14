@@ -269,6 +269,7 @@
   <a href="#exploration">Exploration</a>
   <a href="#transformation">Transformation</a>
   <a href="#testing">Testing</a>
+  <a href="#quality">Data Quality</a>
   <a href="#cicd">CI/CD</a>
   <a href="#dashboard">Dashboard</a>
 </nav>
@@ -474,9 +475,45 @@ where life_span_min > life_span_max</code></pre>
           ✅ accepted_values — size_class (6 values)<br>
           ✅ relationships — fact → dim referential integrity<br>
           ✅ assert_life_span_min_lte_max — 0 violations<br>
-          <strong style="color:#2D4A3E;">14 tests passing</strong>
+          ✅ assert_row_count_in_range — 628 rows (within 600-700)<br>
+          ✅ assert_life_span_max_realistic — all values between 1-30 years<br>
+          ✅ assert_breed_group_null_rate — null rate below 50%<br>
+          <strong style="color:#2D4A3E;">17 tests passing</strong>
         </div>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- DATA QUALITY -->
+<section id="quality">
+  <div class="step-label">Step 4b</div>
+  <h2>Data Quality &amp; Observability</h2>
+  <div class="two-col">
+    <div>
+      <p>Beyond generic dbt tests, three custom data quality tests were added to catch source-level issues that generic tests cannot detect.</p>
+      <p><strong>Row count validation</strong> — asserts that <code>stg_breeds</code> always has between 600-700 rows. Catches incomplete API responses or deduplication failures.</p>
+      <p><strong>Value range check</strong> — asserts that <code>life_span_max</code> is always between 1-30 years. Catches parsing errors from the <code>REGEXP_EXTRACT_ALL</code> logic.</p>
+      <p><strong>Null rate monitoring</strong> — asserts that no more than 50% of breeds have a null <code>breed_group</code>. Catches structural changes in the API response.</p>
+      <p><strong>Cloud Monitoring alert</strong> — a log-based alerting policy sends an email to <code>bogdanbirgovan@gmail.com</code> whenever the Cloud Function logs an ERROR severity message. Pipeline failures are caught immediately rather than discovered when the dashboard goes stale.</p>
+    </div>
+    <div>
+<pre><code>-- assert_row_count_in_range.sql
+select count(*) as row_count
+from {{ ref('stg_breeds') }}
+having count(*) < 600 or count(*) > 700
+
+-- assert_life_span_max_realistic.sql
+select breed_id, life_span_max
+from {{ ref('stg_breeds') }}
+where life_span_max is not null
+  and (life_span_max < 1 or life_span_max > 30)
+
+-- assert_breed_group_null_rate.sql
+select
+    countif(breed_group is null) / count(*) as null_rate
+from {{ ref('stg_breeds') }}
+having null_rate > 0.50</code></pre>
     </div>
   </div>
 </section>
@@ -520,17 +557,6 @@ on:
     # Ingest runs at 02:00 UTC via Cloud Scheduler
     # dbt runs at 03:00 UTC — after ingestion completes
     - cron: '0 3 * * *'</code></pre>
-      <div style="margin-top:16px; background:#fff; border-radius:8px; padding:20px; border:1px solid rgba(0,0,0,0.07);">
-        <div style="font-size:0.8rem; font-weight:700; color:#2D4A3E; margin-bottom:12px;">CRON SYNTAX</div>
-        <div style="font-size:0.82rem; line-height:2; font-family: monospace;">
-          ┌─ minute (0-59)<br>
-          │ ┌─ hour (0-23)<br>
-          │ │ ┌─ day of month (1-31)<br>
-          │ │ │ ┌─ month (1-12)<br>
-          │ │ │ │ ┌─ day of week (0-6)<br>
-          0 3 * * *  → every day at 03:00 UTC
-        </div>
-      </div>
     </div>
   </div>
 </section>
