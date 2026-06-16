@@ -22,6 +22,9 @@ clean-targets:         # directories to be removed by `dbt clean`
 
 models:
   dog_breed_explorer:
+    +persist_docs:
+      relation: true
+      columns: true
     staging:
       +materialized: view
     marts:

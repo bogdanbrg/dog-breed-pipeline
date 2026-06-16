@@ -67,6 +67,7 @@ Dog API
               └─► BigQuery bronze table (raw load)
                     └─► dbt (curated/silver layer)
                           └─► BigQuery curated tables
+                                └─► Looker Studio dashboard
 ```
 
 ## Stack
