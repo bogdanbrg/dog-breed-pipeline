@@ -455,7 +455,13 @@
     <div>
       <p>dbt tests ensure data quality is enforced on every run — both in development (CI on pull requests) and production (CD on merge to main).</p>
       <p><strong>Generic tests:</strong> <code>unique</code>, <code>not_null</code>, <code>accepted_values</code>, and <code>relationships</code> (referential integrity between fact and dim).</p>
-      <p><strong>Custom test:</strong> <code>assert_life_span_min_lte_max</code> — returns any row where <code>life_span_min &gt; life_span_max</code>, catching data anomalies from the API range parser.</p>
+      <p><strong>Custom tests (4):</strong></p>
+      <ul>
+        <li><code>assert_life_span_min_lte_max</code> — returns any row where <code>life_span_min &gt; life_span_max</code>, catching data anomalies from the API range parser</li>
+        <li><code>assert_row_count_in_range</code> — <code>stg_breeds</code> must have 600–700 rows, catching partial or failed ingestion</li>
+        <li><code>assert_life_span_max_realistic</code> — <code>life_span_max</code> must be between 1–30 years</li>
+        <li><code>assert_breed_group_null_rate</code> — null rate for <code>breed_group</code> must stay below 50%</li>
+      </ul>
       <p><strong>Documentation:</strong> All models and columns have descriptions in <code>schema.yml</code>, persisted to BigQuery via <code>persist_docs</code>.</p>
     </div>
     <div>
